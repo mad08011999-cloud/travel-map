@@ -55,7 +55,7 @@ dialog#auth{border:1px solid var(--line);border-radius:16px;padding:24px;backgro
 .ph{height:96px;display:flex;align-items:end;padding:12px 14px;color:#fff;font-weight:800;font-size:12px;letter-spacing:.05em}.ph.sf{background:linear-gradient(135deg,#ff7a59,#e5484d)}.ph.ca{background:linear-gradient(135deg,#0e8f8a,#3b6fd8)}
 .pop .btn{padding:4px 8px;font-size:.75rem;margin:2px}.pop p{margin:6px 0}
 .card{cursor:pointer}.card:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
-.ph.img{height:150px;background-size:cover!important;background-position:center!important}
+.ph{position:relative}.ph span{position:relative;z-index:1;text-shadow:0 1px 3px rgba(0,0,0,.45)}.ph.img{height:150px}.ph.img::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 35%,rgba(0,0,0,.65))}.ph.img span{z-index:2}.phi,.pdi{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 dialog#pd{border:0;padding:0;border-radius:18px;background:var(--card);color:var(--ink);width:min(760px,94vw);max-height:92vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.35)}
 dialog#pd::backdrop{background:rgba(10,15,12,.6)}
 .pdx{position:sticky;top:10px;float:right;margin:10px 10px -50px 0;z-index:2;background:rgba(255,253,247,.92);color:#1d2a26}
