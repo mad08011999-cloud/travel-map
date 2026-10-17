@@ -28,7 +28,7 @@ $('#sTot').textContent=P.length;$('#sSf').textContent=P.filter(p=>p.category=='s
 $('#moreB').onclick=()=>{SHOW+=24;render()};
 ['q','cat','city','st','sort'].forEach(id=>$('#'+id).addEventListener('input',()=>{SHOW=24;render()}));
 let sel=null;
-function nearList(lat,lng,ex){return P.map((p,i)=>[i,km(lat,lng,p.lat,p.lng)]).filter(([i])=>i!==ex).sort((a,b)=>a[1]-b[1]).slice(0,5).map(([i,d])=>`<li><button onclick="fly(${i})"><span>${esc(P[i].name)}</span><span class="m">${Math.round(d*0.621371)} mi</span></button></li>`).join('')}
+function nearList(lat,lng,ex){return P.map((p,i)=>[i,km(lat,lng,p.lat,p.lng)]).filter(([i])=>i!==ex).sort((a,b)=>a[1]-b[1]).slice(0,5).map(([i,d])=>`<li><button onclick="fly(${i})"><span>${esc(P[i].name)}</span><span class="m">${(d*0.621371).toFixed(d<16?1:0)} mi</span></button></li>`).join('')}
 function panel(i){sel=i;const p=P[i],ca=p.category!='sf_bay';$('#panel').innerHTML=`<span class="kicker">${ca?'Rest of California':'SF Bay Area'} · saved ${p.mentions}×</span><h3>${esc(p.name)}</h3><div class="m">📍 ${esc(p.city)} · ${mi(p)} mi from San Jose</div><p>${esc(p.description)}</p><div class="m">${(p.urls||[]).map((u,k)=>`<a href="${esc(u)}" target="_blank" rel="noopener">Instagram post ${k+1}</a>`).join(' · ')}</div><div class="foot" style="border:0;padding:0">${acts(i,1)}</div><span class="kicker" style="margin-top:8px">Nearby saves</span><ul class="near">${nearList(p.lat,p.lng,i)}</ul>`}
 function setCat(c){mcat=c;document.querySelectorAll('#mcat button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.c==c));if(!cl)return;cl.clearLayers();cl.addLayers(P.filter(p=>!c||p.category==c).map(p=>p.mk))}
 document.querySelectorAll('#mcat button').forEach(b=>b.onclick=()=>setCat(b.dataset.c));
