@@ -32,7 +32,7 @@ def geocode(p):
         r = json.load(urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': UA}), timeout=30))
         res = [float(r[0]['lat']), float(r[0]['lon'])] if r else None
     except Exception as e:
-        print('geocode error', q, e); res = None
+        print('geocode error', q, e); last = time.time(); return None  # not cached, retried next run
     last = time.time(); cache[q] = res; return res
 out, skipped, seen = [], [], set()
 for p in data:
