@@ -35,3 +35,31 @@ $('#tclr').onclick=()=>{T=[];sv('trip',T);rTrip()};
 ['q','cat','city','st','sort'].forEach(id=>$('#'+id).addEventListener('input',render));
 fetch('places.json').then(r=>r.json()).then(d=>{P=d.filter(p=>p.lat!=null);P.forEach(p=>p.km=km(SJ[0],SJ[1],p.lat,p.lng));
 [...new Set(P.map(p=>p.city))].sort().forEach(c=>$('#city').insertAdjacentHTML('beforeend',`<option>${esc(c)}</option>`));render();show(location.hash.slice(1)||'home')});
+// ---- Supabase auth + sync (same project as movie site) ----
+const SB_URL="https://mazrqepjgdtdraxpcptk.supabase.co",SB_KEY="sb_publishable_-2do3uyVQ4kcl7PfnBeDpw_mWEc7TXN",SITE="https://mad08011999-cloud.github.io/travel-map/";
+const sb=window.supabase?window.supabase.createClient(SB_URL,SB_KEY):null;let user=null,cloudOK=true;
+const syncM=t=>$('#sync').textContent=t;
+const pid=n=>n.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+async function push(){if(!sb||!user||!cloudOK)return;syncM('⏳ Saving…');const now=new Date().toISOString();
+  const names=new Set([...W,...V,...T]);const rows=[...names].map(n=>({user_id:user.id,place_id:pid(n),wishlist:W.has(n),visited:V.has(n),trip_order:T.includes(n)?T.indexOf(n):null,updated_at:now}));
+  const keep=rows.map(r=>r.place_id);
+  let r=rows.length?await sb.from('travel_status').upsert(rows,{onConflict:'user_id,place_id'}):{};if(r.error)return cloudFail(r.error);
+  let q=sb.from('travel_status').delete().eq('user_id',user.id);if(keep.length)q=q.not('place_id','in',`(${keep.map(k=>'"'+k+'"').join(',')})`);r=await q;if(r.error)return cloudFail(r.error);syncM('☁️ Synced')}
+function cloudFail(e){console.error(e);if(/travel_status|PGRST205|schema cache/i.test(e.message||'')){cloudOK=false;syncM('Signed in · cloud sync not set up yet, saved locally')}else syncM('⚠️ Sync failed')}
+async function pull(){syncM('⏳ Loading…');const{data,error}=await sb.from('travel_status').select('*');if(error)return cloudFail(error);
+  const byId=Object.fromEntries(P.map(p=>[pid(p.name),p.name]));const rt=[];
+  data.forEach(r=>{const n=byId[r.place_id];if(!n)return;if(r.wishlist)W.add(n);if(r.visited)V.add(n);if(r.trip_order!=null)rt.push([r.trip_order,n])});
+  rt.sort((a,b)=>a[0]-b[0]).forEach(([,n])=>{if(!T.includes(n))T.push(n)}); // merge: union, remote order first then local extras
+  const rn=rt.map(x=>x[1]);T=[...rn,...T.filter(n=>!rn.includes(n))];
+  sv('wish',[...W]);sv('vis',[...V]);sv('trip',T);render();if($('#trip').classList.contains('on'))rTrip();await push()}
+for(const f of ['tg','addT','mv','rm']){const o=window[f];window[f]=(...a)=>{o(...a);push()}}
+const _clr=$('#tclr').onclick;$('#tclr').onclick=()=>{_clr();push()};
+function authUI(){const b=$('#authBox');if(!sb){b.innerHTML='';return}
+  if(user){b.innerHTML=`<button class="btn" id="out" title="Sign out">👤 ${esc(user.user_metadata?.full_name||user.email)} · Sign out</button>`;$('#out').onclick=()=>sb.auth.signOut()}
+  else{b.innerHTML='<button class="btn on" id="in">Sign in</button>';syncM('');$('#in').onclick=()=>$('#auth').showModal()}}
+if(sb){$('#authX').onclick=()=>$('#auth').close();
+  $('#gBtn').onclick=async()=>{const{error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:SITE}});if(error)$('#msg').textContent=error.message};
+  $('#magic').onclick=async()=>{const em=$('#aEm').value.trim();if(!/^\S+@\S+\.\S+$/.test(em)){$('#msg').textContent='Enter a valid email.';return}
+    const{error}=await sb.auth.signInWithOtp({email:em,options:{emailRedirectTo:SITE}});$('#msg').textContent=error?error.message:'Check your inbox for the sign-in link ✉️'};
+  sb.auth.onAuthStateChange((ev,s)=>{const nu=s?.user||null,ch=nu?.id!==user?.id;user=nu;authUI();if(nu&&ch){$('#auth').open&&$('#auth').close();const go=()=>P.length?pull():setTimeout(go,300);setTimeout(go,0)}})}
+authUI();

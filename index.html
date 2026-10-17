@@ -34,7 +34,8 @@ input[type=search]{flex:1;min-width:200px}
 .trip li span{flex:1}
 </style></head><body>
 <nav><b>✈️ Poojith's <span>Travel</span></b>
-<button class="btn on" data-v="home">Places</button><button class="btn" data-v="map">Map</button><button class="btn" data-v="trip">Trip planner</button><button class="btn" id="theme">🌓</button></nav>
+<button class="btn on" data-v="home">Places</button><button class="btn" data-v="map">Map</button><button class="btn" data-v="trip">Trip planner</button><span id="sync" class="m"></span><span id="authBox"></span><button class="btn" id="theme">🌓</button></nav>
+<dialog id="auth" style="border:1px solid var(--line);border-radius:16px;padding:24px;background:var(--card);color:var(--ink);max-width:360px;width:92%"><h3 style="margin-top:0">Sign in to sync</h3><p class="m">Keep your wishlist, visited and trip in sync across devices.</p><button class="btn" id="gBtn" style="width:100%;margin-bottom:12px">🔵 Continue with Google</button><input type="email" id="aEm" placeholder="you@email.com" style="width:100%"><button class="btn on" id="magic" style="width:100%;margin-top:8px">✉️ Email me a magic link</button><p id="msg" class="m"></p><button class="btn" id="authX">Close</button></dialog>
 <div class="wrap">
 <section id="home" class="view on">
 <div class="hero"><h1>Places I want to explore</h1><p>Every spot from my Instagram "SF Places to visit" collection — Bay Area gems and California road-trip stops.</p>
@@ -51,4 +52,5 @@ input[type=search]{flex:1;min-width:200px}
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="app.js"></script></body></html>
