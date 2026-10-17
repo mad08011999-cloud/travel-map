@@ -1,40 +1,53 @@
 const SJ=[37.3382,-121.8863],$=s=>document.querySelector(s);
 const ls=(k,d)=>JSON.parse(localStorage.getItem(k)||JSON.stringify(d)),sv=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
-let P=[],W=new Set(ls('wish',[])),V=new Set(ls('vis',[])),T=ls('trip',[]),map,cl;
+let P=[],W=new Set(ls('wish',[])),V=new Set(ls('vis',[])),T=ls('trip',[]),map,cl,mcat='',SHOW=24;
 const km=(a,b,c,d)=>{const r=Math.PI/180,x=Math.sin((c-a)*r/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin((d-b)*r/2)**2;return 6371*2*Math.asin(Math.sqrt(x))};
 const mi=p=>Math.round(p.km*0.621371);
-const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dir=p=>`https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`;
 document.documentElement.dataset.theme=localStorage.getItem('theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
 $('#theme').onclick=()=>{const t=document.documentElement.dataset.theme=='dark'?'light':'dark';document.documentElement.dataset.theme=t;localStorage.setItem('theme',t)};
 document.querySelectorAll('nav [data-v]').forEach(b=>b.onclick=()=>show(b.dataset.v));
 function show(v){document.querySelectorAll('nav [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v==v));document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id==v));history.replaceState(null,'','#'+v);if(v=='map')initMap();if(v=='trip')rTrip()}
-function acts(i){const p=P[i];return `<button class="btn" onclick="tg(W,'wish',${i})">${W.has(p.name)?'❤️':'🤍'} Wishlist</button><button class="btn" onclick="tg(V,'vis',${i})">${V.has(p.name)?'✅':'⬜'} Visited</button><button class="btn" onclick="addT(${i})">➕ Trip</button><button class="btn" onclick="wx(${i})">🌤 Weather</button><button class="btn" onclick="fly(${i})">📍 Map</button>`}
-function tg(s,k,i){const n=P[i].name;s.has(n)?s.delete(n):s.add(n);sv(k,[...s]);render();if(map)map.closePopup()}
+function acts(i,noMap){const p=P[i];return `<button class="btn" onclick="tg(W,'wish',${i})" aria-label="Wishlist">${W.has(p.name)?'❤️':'🤍'} Wishlist</button><button class="btn" onclick="tg(V,'vis',${i})">${V.has(p.name)?'✅':'⬜'} Visited</button><button class="btn" onclick="addT(${i})">➕ Trip</button><button class="btn" onclick="wx(${i})">🌤 Weather</button>${noMap?'':`<button class="btn" onclick="fly(${i})">📍 Map</button>`}<a class="btn" href="${dir(p)}" target="_blank" rel="noopener">🧭 Directions</a>`}
+function tg(s,k,i){const n=P[i].name;s.has(n)?s.delete(n):s.add(n);sv(k,[...s]);render();if(sel===i)panel(i)}
 function addT(i){if(!T.includes(P[i].name)){T.push(P[i].name);sv('trip',T)}$('#wx').textContent=`➕ Added ${P[i].name} to your trip (${T.length} stops).`}
-function fly(i){show('map');setTimeout(()=>{const p=P[i];cl.zoomToShowLayer(p.mk,()=>p.mk.openPopup())},200)}
+function fly(i){show('map');setTimeout(()=>{if(!cl)return;const p=P[i];if(mcat&&p.category!=mcat)setCat('');cl.zoomToShowLayer(p.mk,()=>{p.mk.openPopup();panel(i)})},250)}
 async function wx(i){const p=P[i];$('#wx').textContent=`Loading weather for ${p.name}…`;$('#wx').scrollIntoView({behavior:'smooth',block:'nearest'});
 try{const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${p.lat}&longitude=${p.lng}&current=temperature_2m,apparent_temperature,wind_speed_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph`);const c=(await r.json()).current;
 const code={0:'☀️ Clear',1:'🌤 Mostly clear',2:'⛅ Partly cloudy',3:'☁️ Overcast',45:'🌫 Fog',48:'🌫 Fog',51:'🌦 Drizzle',53:'🌦 Drizzle',55:'🌦 Drizzle',61:'🌧 Rain',63:'🌧 Rain',65:'🌧 Heavy rain',71:'🌨 Snow',80:'🌦 Showers',81:'🌦 Showers',95:'⛈ Thunderstorm'}[c.weather_code]||'🌡';
 $('#wx').innerHTML=`<b>${esc(p.name)}</b> — ${code}, ${Math.round(c.temperature_2m)}°F (feels ${Math.round(c.apparent_temperature)}°F), wind ${Math.round(c.wind_speed_10m)} mph`}catch(e){$('#wx').textContent='Weather unavailable right now.'}}
-function render(){const q=$('#q').value.toLowerCase(),c=$('#cat').value,ci=$('#city').value,st=$('#st').value,so=$('#sort').value;
-let L=P.map((p,i)=>[p,i]).filter(([p])=>(!q||(p.name+p.city+p.description).toLowerCase().includes(q))&&(!c||p.category==c)&&(!ci||p.city==ci)&&(!st||(st=='w'?W.has(p.name):st=='v'?V.has(p.name):!V.has(p.name))));
+const card=(p,i,rank)=>{const ca=p.category!='sf_bay';return `<article class="card"><div class="top"><div><span class="tag ${ca?'ca':''}">${ca?'California':'SF Bay Area'}</span><h3 style="margin-top:8px">${esc(p.name)}</h3></div>${rank?`<span class="rank">${rank}</span>`:''}</div><div class="m">📍 ${esc(p.city)} · ${mi(p)} mi from San Jose</div><p class="d">${esc(p.description)}</p><div class="m">${(p.urls||[]).map((u,k)=>`<a href="${esc(u)}" target="_blank" rel="noopener">Post ${k+1}</a>`).join(' · ')}</div><div class="foot"><span class="saved">Saved ${p.mentions}×</span>${acts(i)}</div></article>`};
+function render(){const q=$('#q').value.toLowerCase().trim(),c=$('#cat').value,ci=$('#city').value,st=$('#st').value,so=$('#sort').value;
+let L=P.map((p,i)=>[p,i]).filter(([p])=>(!q||(p.name+' '+p.city+' '+p.description).toLowerCase().includes(q))&&(!c||p.category==c)&&(!ci||p.city==ci)&&(!st||(st=='w'?W.has(p.name):st=='v'?V.has(p.name):!V.has(p.name))));
 L.sort(so=='d'?(a,b)=>a[0].km-b[0].km:so=='a'?(a,b)=>a[0].name.localeCompare(b[0].name):(a,b)=>b[0].mentions-a[0].mentions);
 $('#cnt').textContent=`${L.length} of ${P.length} places`;
-$('#grid').innerHTML=L.map(([p,i])=>`<div class="card ${p.category=='sf_bay'?'sf':'ca'}"><div class="ph">${p.category=='sf_bay'?'SF BAY AREA':'CALIFORNIA'} · ${mi(p)} MI FROM SAN JOSE</div><div class="bd"><h3>${esc(p.name)}</h3><div class="m">📍 ${esc(p.city)}, ${esc(p.region)} · saved ${p.mentions}×</div><div class="d">${esc(p.description)}</div><div class="m">${p.urls.map((u,k)=>`<a href="${u}" target="_blank" rel="noopener">Post ${k+1}</a>`).join(' · ')}</div><div class="acts">${acts(i)}</div></div></div>`).join('');
+$('#grid').innerHTML=L.slice(0,SHOW).map(([p,i])=>card(p,i)).join('');$('#empty').hidden=L.length>0;$('#moreB').hidden=L.length<=SHOW;
+$('#top').innerHTML=P.slice(0,8).map((p,i)=>card(p,i,i+1)).join('');
 $('#sTot').textContent=P.length;$('#sSf').textContent=P.filter(p=>p.category=='sf_bay').length;$('#sCa').textContent=P.filter(p=>p.category!='sf_bay').length;$('#sW').textContent=W.size;$('#sV').textContent=V.size}
+$('#moreB').onclick=()=>{SHOW+=24;render()};
+['q','cat','city','st','sort'].forEach(id=>$('#'+id).addEventListener('input',()=>{SHOW=24;render()}));
+let sel=null;
+function nearList(lat,lng,ex){return P.map((p,i)=>[i,km(lat,lng,p.lat,p.lng)]).filter(([i])=>i!==ex).sort((a,b)=>a[1]-b[1]).slice(0,5).map(([i,d])=>`<li><button onclick="fly(${i})"><span>${esc(P[i].name)}</span><span class="m">${Math.round(d*0.621371)} mi</span></button></li>`).join('')}
+function panel(i){sel=i;const p=P[i],ca=p.category!='sf_bay';$('#panel').innerHTML=`<span class="kicker">${ca?'Rest of California':'SF Bay Area'} · saved ${p.mentions}×</span><h3>${esc(p.name)}</h3><div class="m">📍 ${esc(p.city)} · ${mi(p)} mi from San Jose</div><p>${esc(p.description)}</p><div class="m">${(p.urls||[]).map((u,k)=>`<a href="${esc(u)}" target="_blank" rel="noopener">Instagram post ${k+1}</a>`).join(' · ')}</div><div class="foot" style="border:0;padding:0">${acts(i,1)}</div><span class="kicker" style="margin-top:8px">Nearby saves</span><ul class="near">${nearList(p.lat,p.lng,i)}</ul>`}
+function setCat(c){mcat=c;document.querySelectorAll('#mcat button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.c==c));if(!cl)return;cl.clearLayers();cl.addLayers(P.filter(p=>!c||p.category==c).map(p=>p.mk))}
+document.querySelectorAll('#mcat button').forEach(b=>b.onclick=()=>setCat(b.dataset.c));
+document.querySelectorAll('#mview button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#mview button').forEach(x=>x.setAttribute('aria-pressed',x==b));if(!map)return;b.dataset.z=='sj'?map.setView(SJ,9):map.fitBounds(L.latLngBounds(P.map(p=>[p.lat,p.lng])),{padding:[30,30]})});
 function initMap(){if(map){map.invalidateSize();return}
-map=L.map('map').setView(SJ,9);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+if(!window.L||!L.markerClusterGroup){$('#fb').style.display='block';return}
+map=L.map('lmap').setView(SJ,9);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
 L.circleMarker(SJ,{radius:10,color:'#fff',weight:3,fillColor:'#3b6fd8',fillOpacity:1}).addTo(map).bindPopup('<b>You are here</b><br>San Jose, CA').openPopup();
-cl=L.markerClusterGroup();P.forEach((p,i)=>{p.mk=L.marker([p.lat,p.lng]).bindPopup(()=>`<b>${esc(p.name)}</b><br><small>${esc(p.city)} · ${mi(p)} mi from San Jose</small><p>${esc(p.description)}</p>${p.urls[0]?`<a href="${p.urls[0]}" target="_blank">Instagram post</a><br>`:''}<div class="acts" style="margin-top:6px">${acts(i).replace(/<button class="btn" onclick="fly\(\d+\)">📍 Map<\/button>/,'')}</div>`,{maxWidth:280});cl.addLayer(p.mk)});map.addLayer(cl)}
+cl=L.markerClusterGroup();P.forEach((p,i)=>{p.mk=L.marker([p.lat,p.lng],{icon:L.divIcon({className:'',html:`<span class="pin ${p.category!='sf_bay'?'ca':''}"></span>`,iconSize:[18,18],iconAnchor:[9,18],popupAnchor:[0,-16]}),title:p.name}).bindPopup(()=>`<b>${esc(p.name)}</b><br><small>${esc(p.city)} · ${mi(p)} mi from San Jose</small>`).on('click',()=>panel(i))});setCat(mcat);map.addLayer(cl)}
 function rTrip(){const ps=T.map(n=>P.find(p=>p.name==n)).filter(Boolean);
-$('#tl').innerHTML=ps.map((p,k)=>`<li><span><b>${esc(p.name)}</b> <small class="m">${esc(p.city)}</small></span><button class="btn" onclick="mv(${k},-1)">↑</button><button class="btn" onclick="mv(${k},1)">↓</button><button class="btn" onclick="rm(${k})">✕</button></li>`).join('')||'<p class="m">No stops yet.</p>';
+$('#tl').innerHTML=ps.map((p,k)=>`<li><span><b>${esc(p.name)}</b> <small class="m">${esc(p.city)}</small></span><a class="btn" href="${dir(p)}" target="_blank" rel="noopener">🧭</a><button class="btn" onclick="mv(${k},-1)">↑</button><button class="btn" onclick="mv(${k},1)">↓</button><button class="btn" onclick="rm(${k})">✕</button></li>`).join('')||'<p class="m">No stops yet.</p>';
 let d=0,pr=SJ;ps.forEach(p=>{d+=km(pr[0],pr[1],p.lat,p.lng);pr=[p.lat,p.lng]});$('#tsum').textContent=ps.length?`Route from San Jose: ~${Math.round(d*0.621371)} mi straight-line across ${ps.length} stops.`:''}
 function mv(k,d){const j=k+d;if(j<0||j>=T.length)return;[T[k],T[j]]=[T[j],T[k]];sv('trip',T);rTrip()}
 function rm(k){T.splice(k,1);sv('trip',T);rTrip()}
 $('#tclr').onclick=()=>{T=[];sv('trip',T);rTrip()};
-['q','cat','city','st','sort'].forEach(id=>$('#'+id).addEventListener('input',render));
-fetch('places.json').then(r=>r.json()).then(d=>{P=d.filter(p=>p.lat!=null);P.forEach(p=>p.km=km(SJ[0],SJ[1],p.lat,p.lng));
-[...new Set(P.map(p=>p.city))].sort().forEach(c=>$('#city').insertAdjacentHTML('beforeend',`<option>${esc(c)}</option>`));render();show(location.hash.slice(1)||'home')});
+fetch('places.json').then(r=>r.json()).then(d=>{P=d.filter(p=>p.lat!=null).sort((a,b)=>b.mentions-a.mentions);P.forEach(p=>p.km=km(SJ[0],SJ[1],p.lat,p.lng));
+[...new Set(P.map(p=>p.city))].sort().forEach(c=>$('#city').insertAdjacentHTML('beforeend',`<option>${esc(c)}</option>`));
+$('#cA').textContent=P.length;$('#cS').textContent=P.filter(p=>p.category=='sf_bay').length;$('#cC').textContent=P.filter(p=>p.category!='sf_bay').length;$('#lTot').textContent=P.length+' real places';
+$('#near').innerHTML=nearList(SJ[0],SJ[1],-1);render();show(location.hash.slice(1)||'home')});
 // ---- Supabase auth + sync (same project as movie site) ----
 const SB_URL="https://mazrqepjgdtdraxpcptk.supabase.co",SB_KEY="sb_publishable_-2do3uyVQ4kcl7PfnBeDpw_mWEc7TXN",SITE="https://mad08011999-cloud.github.io/travel-map/";
 const sb=window.supabase?window.supabase.createClient(SB_URL,SB_KEY):null;let user=null,cloudOK=true;
