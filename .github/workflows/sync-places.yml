@@ -17,11 +17,13 @@ jobs:
         with: { python-version: '3.12' }
       - name: Rebuild places.json (keep coords, geocode only new places)
         run: python scripts/sync_places.py /tmp/source
+      - name: Enrich new places (Wikipedia/Wikidata/Commons)
+        run: python scripts/enrich.py
       - name: Commit if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add places.json scripts/geocode_cache.json 2>/dev/null || git add places.json
+          git add places.json wiki.json scripts/enrich_cache.json; git add scripts/geocode_cache.json 2>/dev/null || true
           if git diff --cached --quiet; then echo "No changes"; exit 0; fi
           git commit -m "Sync places from travel-database"
           git push
