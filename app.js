@@ -91,7 +91,7 @@ function refreshMeta(){const keep={country:$('#country').value,city:$('#city').v
  $('#city').innerHTML='<option value="">All cities</option>'+[...new Set(P.map(p=>p.city).filter(Boolean))].sort().map(c=>`<option>${esc(c)}</option>`).join('');
  $('#country').value=keep.country;$('#city').value=keep.city;
  $('#cA').textContent=P.length;$('#cS').textContent=P.filter(p=>p.category=='sf_bay').length;$('#cC').textContent=P.filter(p=>p.category=='california').length;$('#cU').textContent=P.filter(p=>p.category=='usa').length;$('#cI').textContent=P.filter(p=>p.category=='international').length;if($('#cM'))$('#cM').textContent=P.filter(p=>p.mine).length;$('#lTot').textContent=BASE.length+' real places';
- $('#near').innerHTML=nearList(SJ[0],SJ[1],-1)}
+ if($('#near'))$('#near').innerHTML=nearList(SJ[0],SJ[1],-1)}
 function buildP(){const mine=(window.myPlaces?myPlaces():[]);P=[...mine,...BASE];P.forEach(p=>p.km=km(SJ[0],SJ[1],p.lat,p.lng));refreshMeta();render();if(cl){cl.clearLayers();mkMarkers()}if($('#trip').classList.contains('on'))rTrip()}
 Promise.all([fetch('places.json').then(r=>r.json()),fetch('wiki.json').then(r=>r.ok?r.json():{}).catch(()=>({}))]).then(([d,wk])=>{WK=wk||{};BASE=d.filter(p=>p.lat!=null).sort((a,b)=>b.mentions-a.mentions||a.name.localeCompare(b.name));BASE.forEach((p,k)=>p.rank=k+1);
 buildP();show(location.hash.slice(1)||'home')});
