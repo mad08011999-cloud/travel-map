@@ -20,8 +20,8 @@ function rRes(info){const ul=$('#adRes');if(info){ul.innerHTML=`<li class="info"
  ul.innerHTML=RES.map((r,k)=>`<li role="option" tabindex="0" data-k="${k}" aria-selected="false"><span class="num">${k+1}</span><div><div class="typ">${esc(otypeLabel(r))}</div><div class="n">${esc(r.name)}</div><div class="m">${esc(addrOf(r))}</div><div class="m">${mi({km:km(SJ[0],SJ[1],r.lat,r.lng)})} mi from San Jose</div></div></li>`).join('');
  ul.querySelectorAll('li[data-k]').forEach(li=>{li.onclick=()=>pick(+li.dataset.k);li.onmouseenter=()=>drawPreview(+li.dataset.k);li.onkeydown=e=>{if(e.key=='Enter')pick(+li.dataset.k)}});drawPreview(null)}
 async function search(q){const n=++qN;if(q.length<3){RES=[];rRes(q?'Keep typing…':'');drawPreview(null);return}rRes('Searching…');
- try{const r=await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=8&lang=en&lat=${SJ[0]}&lon=${SJ[1]}`);const d=await r.json();if(n!==qN)return;
-  RES=(d.features||[]).map(fromPhoton);const seen=new Set();RES=RES.filter(x=>{const k=x.name+'|'+x.lat.toFixed(3)+x.lng.toFixed(3);if(seen.has(k))return false;seen.add(k);return true});
+ try{const r=await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=12&lang=en&lat=${SJ[0]}&lon=${SJ[1]}`);const d=await r.json();if(n!==qN)return;
+  const pen=r=>(/^(highway|building|landuse)$/.test(r.osm_key)||r.osm_value=='house'?2:0)+(r.osm_key=='place'&&/house|postcode/.test(r.osm_value)?1:0);RES=(d.features||[]).map(fromPhoton).map((r,k)=>[r,pen(r)*100+k]).sort((a,b)=>a[1]-b[1]).map(x=>x[0]).slice(0,8);const seen=new Set();RES=RES.filter(x=>{const k=x.name+'|'+x.lat.toFixed(3)+x.lng.toFixed(3);if(seen.has(k))return false;seen.add(k);return true});
   RES.length?rRes():rRes('No matches. Try a different spelling, add a city, or click on the map to drop a pin.')}catch(e){if(n===qN)rRes('Search is unavailable right now. Try again in a moment.')}}
 function pick(k){CUR=RES[k];showForm()}
 function showForm(){const r=CUR,e=EDIT;$('#adSearch').hidden=true;$('#adForm').hidden=false;$('#adT').textContent=e?'Edit my pick':'Add a place';
