@@ -66,7 +66,10 @@ async function wikiMatch(p){const ctx=new Set(wnorm([p.city,p.region,p.country].
   if(!s||s.type=='disambiguation'||!s.coordinates)continue;if(wsim(p.name,s.title,ctx)<.82)continue;
   if(FEAT.test(p.name)&&SETTLE.test(s.description||'')&&wnorm(s.title)!=wnorm(p.name))continue;
   const lim=WIDE.test(p.name+' '+(s.description||''))?80:40;if(km(p.lat,p.lng,s.coordinates.lat,s.coordinates.lon)>lim)continue;
-  return{title:s.title,url:s.content_urls?.desktop?.page,extract:s.extract,description:s.description,thumb:s.thumbnail?.source,image:s.originalimage?.source,runtime:true}}
+  const out={title:s.title,url:s.content_urls?.desktop?.page,extract:s.extract,description:s.description,thumb:s.thumbnail?.source,image:s.originalimage?.source,runtime:true};
+  try{const m=(out.image||out.thumb||'').match(/\/commons\/(?:thumb\/)?[0-9a-f]\/[0-9a-f]{2}\/([^/?#]+)/);if(m){const fn=decodeURIComponent(m[1]);const d=await wget(`https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent('File:'+fn)}&prop=imageinfo&iiprop=extmetadata&format=json&origin=*`);
+   const md=Object.values(d?.query?.pages||{})[0]?.imageinfo?.[0]?.extmetadata||{};const st=v=>(v||'').replace(/<[^>]+>/g,'').trim();out.credit={artist:st(md.Artist?.value).slice(0,120)||'Unknown',license:st(md.LicenseShortName?.value),file:'https://commons.wikimedia.org/wiki/'+encodeURIComponent('File:'+fn.replace(/ /g,'_'))}}}catch(e){}
+  return out}
  return{none:true}}
 async function openPD(i){pdI=i;const p=P[i];const d=$('#pd');rPD(i,WK[pid(p.name)]);if(!d.open)d.showModal();if(!WK[pid(p.name)]){const w=await wikiFor(p);if(pdI===i)rPD(i,w)}}
 function rPD(i,w){const p=P[i],k=cat(p),ok=w&&w.title;const ph=ok&&(w.thumb||w.image);
